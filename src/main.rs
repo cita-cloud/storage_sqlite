@@ -77,6 +77,30 @@ fn main() {
     }
 }
 
+
+use cita_ng_proto::config::{RegisterEndpointInfo, Endpoint, config_service_client::ConfigServiceClient};
+
+async fn register_endpoint(
+    config_port: String,
+    port: String,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let config_addr = format!("http://127.0.0.1:{}", config_port);
+    let mut client = ConfigServiceClient::connect(config_addr).await?;
+
+    // id of Storage service is 3
+    let request = Request::new(RegisterEndpointInfo {
+        id: 3,
+        endpoint: Some(Endpoint {
+            hostname: "127.0.0.1".to_owned(),
+            port,
+        }),
+    });
+
+    let response = client.register_endpoint(request).await?;
+
+    Ok(response.into_inner().is_success)
+}
+
 use cita_ng_proto::common::SimpleResponse;
 use cita_ng_proto::storage::{
     storage_service_server::StorageService, storage_service_server::StorageServiceServer, Content,
@@ -169,6 +193,9 @@ async fn run(opts: RunOpts) -> Result<(), Box<dyn std::error::Error>> {
     let db = DB::new(&opts.db_path);
 
     let storage_server = StorageServer::new(db);
+
+    // register endpoint
+    register_endpoint(opts.config_port, opts.grpc_port).await?;
 
     Server::builder()
         .add_service(StorageServiceServer::new(storage_server))

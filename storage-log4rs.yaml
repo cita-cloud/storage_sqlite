@@ -28,4 +28,4 @@ appenders:
 root:
   level: debug
   appenders:
-    - stdout
+    - journey-service
