@@ -117,6 +117,7 @@ impl StorageService for StorageServer {
 
         let ret = self.db.read().store(region, key, value);
         if ret.is_err() {
+            debug!("store error: {:?}", ret);
             Err(Status::internal("db store failed"))
         } else {
             let reply = SimpleResponse { is_success: true };
@@ -133,11 +134,10 @@ impl StorageService for StorageServer {
 
         let ret = self.db.read().load(region, key);
         if let Ok(value) = ret {
-            let reply = Value {
-                value,
-            };
+            let reply = Value { value };
             Ok(Response::new(reply))
         } else {
+            debug!("load error: {:?}", ret);
             Err(Status::internal("db load failed"))
         }
     }
@@ -151,6 +151,7 @@ impl StorageService for StorageServer {
 
         let ret = self.db.read().delete(region, key);
         if ret.is_err() {
+            debug!("delete error: {:?}", ret);
             Err(Status::internal("db delete failed"))
         } else {
             let reply = SimpleResponse { is_success: true };

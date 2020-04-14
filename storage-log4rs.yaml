@@ -26,6 +26,6 @@ appenders:
 
 # Set the default logging level and attach the default appender to the root
 root:
-  level: info
+  level: debug
   appenders:
-    - journey-service
+    - stdout

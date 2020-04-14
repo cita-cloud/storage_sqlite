@@ -74,7 +74,7 @@ impl DB {
     }
 
     pub fn store(&self, region: u32, key: Vec<u8>, value: Vec<u8>) -> Result<(), String> {
-        match region {
+        let ret = match region {
             0 => {
                 if key.len() != 8 {
                     return Err("len of key is not correct".to_owned());
@@ -82,21 +82,19 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
-                let ret = self.conn.execute(
+                self.conn.execute(
                     "INSERT INTO global (id, content) values (?1, ?2)",
                     &[&id as &dyn ToSql, &value as &dyn ToSql],
-                );
-                ret.map(|_| ()).map_err(|_| "store failed".to_owned())
+                )
             }
             1 => {
                 if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
-                let ret = self.conn.execute(
+                self.conn.execute(
                     "INSERT INTO transactions (tx_hash, tx) values (?1, ?2)",
                     &[&key as &dyn ToSql, &value as &dyn ToSql],
-                );
-                ret.map(|_| ()).map_err(|_| "store failed".to_owned())
+                )
             }
             2 => {
                 if key.len() != 8 {
@@ -105,11 +103,10 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self.conn.execute(
+                self.conn.execute(
                     "INSERT INTO headers (block_height, block_header) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
-                );
-                ret.map(|_| ()).map_err(|_| "store failed".to_owned())
+                )
             }
             3 => {
                 if key.len() != 8 {
@@ -118,11 +115,10 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self.conn.execute(
+                self.conn.execute(
                     "INSERT INTO bodies (block_height, block_body) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
-                );
-                ret.map(|_| ()).map_err(|_| "store failed".to_owned())
+                )
             }
             4 => {
                 if key.len() != 8 {
@@ -134,18 +130,18 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self.conn.execute(
+                self.conn.execute(
                     "INSERT INTO blockhash (block_height, block_hash) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
-                );
-                ret.map(|_| ()).map_err(|_| "store failed".to_owned())
+                )
             }
-            _ => Err("id is not correct".to_owned()),
-        }
+            _ => return Err("id is not correct".to_owned()),
+        };
+        ret.map(|_| ()).map_err(|e| format!("store error: {:?}", e))
     }
 
     pub fn load(&self, region: u32, key: Vec<u8>) -> Result<Vec<u8>, String> {
-        match region {
+        let ret = match region {
             0 => {
                 if key.len() != 8 {
                     return Err("len of key is not correct".to_owned());
@@ -153,33 +149,18 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
-                let ret = self
-                    .conn
-                    .query_row("SELECT tx FROM global WHERE id=?", &[&id], |row| row.get(0));
-                if ret == Err(Error::QueryReturnedNoRows) {
-                    Ok(vec![])
-                } else if ret.is_err() {
-                    Err("load failed".to_owned())
-                } else {
-                    Ok(ret.unwrap())
-                }
+                self.conn
+                    .query_row("SELECT content FROM global WHERE id=?", &[&id], |row| row.get(0))
             }
             1 => {
                 if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
-                let ret = self.conn.query_row(
-                    "SELECT content FROM transactions WHERE tx_hash=?",
+                self.conn.query_row(
+                    "SELECT tx FROM transactions WHERE tx_hash=?",
                     &[&key],
                     |row| row.get(0),
-                );
-                if ret == Err(Error::QueryReturnedNoRows) {
-                    Ok(vec![])
-                } else if ret.is_err() {
-                    Err("load failed".to_owned())
-                } else {
-                    Ok(ret.unwrap())
-                }
+                )
             }
             2 => {
                 if key.len() != 8 {
@@ -188,18 +169,11 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self.conn.query_row(
+                self.conn.query_row(
                     "SELECT block_header FROM headers WHERE block_height=?",
                     &[&block_height],
                     |row| row.get(0),
-                );
-                if ret == Err(Error::QueryReturnedNoRows) {
-                    Ok(vec![])
-                } else if ret.is_err() {
-                    Err("load failed".to_owned())
-                } else {
-                    Ok(ret.unwrap())
-                }
+                )
             }
             3 => {
                 if key.len() != 8 {
@@ -208,18 +182,11 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self.conn.query_row(
+                self.conn.query_row(
                     "SELECT block_body FROM bodies WHERE block_height=?",
                     &[&block_height],
                     |row| row.get(0),
-                );
-                if ret == Err(Error::QueryReturnedNoRows) {
-                    Ok(vec![])
-                } else if ret.is_err() {
-                    Err("load failed".to_owned())
-                } else {
-                    Ok(ret.unwrap())
-                }
+                )
             }
             4 => {
                 if key.len() != 8 {
@@ -228,25 +195,25 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self.conn.query_row(
+                self.conn.query_row(
                     "SELECT block_hash FROM blockhash WHERE block_height=?",
                     &[&block_height],
                     |row| row.get(0),
-                );
-                if ret == Err(Error::QueryReturnedNoRows) {
-                    Ok(vec![])
-                } else if ret.is_err() {
-                    Err("load failed".to_owned())
-                } else {
-                    Ok(ret.unwrap())
-                }
+                )
             }
-            _ => Err("id is not correct".to_owned()),
+            _ => return Err("id is not correct".to_owned()),
+        };
+        if ret == Err(Error::QueryReturnedNoRows) {
+            Ok(vec![])
+        } else if ret.is_err() {
+            Err(format!("load error: {:?}", ret))
+        } else {
+            Ok(ret.unwrap())
         }
     }
 
     pub fn delete(&self, region: u32, key: Vec<u8>) -> Result<(), String> {
-        match region {
+        let ret = match region {
             0 => {
                 if key.len() != 8 {
                     return Err("len of key is not correct".to_owned());
@@ -254,17 +221,14 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
-                let ret = self.conn.execute("DELETE FROM global WHERE id=?", &[&id]);
-                ret.map(|_| ()).map_err(|_| "delete failed".to_owned())
+                self.conn.execute("DELETE FROM global WHERE id=?", &[&id])
             }
             1 => {
                 if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
-                let ret = self
-                    .conn
-                    .execute("DELETE FROM transactions WHERE tx_hash=?", &[&key]);
-                ret.map(|_| ()).map_err(|_| "delete failed".to_owned())
+                self.conn
+                    .execute("DELETE FROM transactions WHERE tx_hash=?", &[&key])
             }
             2 => {
                 if key.len() != 8 {
@@ -273,10 +237,8 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self
-                    .conn
-                    .execute("DELETE FROM headers WHERE block_height=?", &[&block_height]);
-                ret.map(|_| ()).map_err(|_| "delete failed".to_owned())
+                self.conn
+                    .execute("DELETE FROM headers WHERE block_height=?", &[&block_height])
             }
             3 => {
                 if key.len() != 8 {
@@ -285,10 +247,8 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self
-                    .conn
-                    .execute("DELETE FROM bodies WHERE block_height=?", &[&block_height]);
-                ret.map(|_| ()).map_err(|_| "delete failed".to_owned())
+                self.conn
+                    .execute("DELETE FROM bodies WHERE block_height=?", &[&block_height])
             }
             4 => {
                 if key.len() != 8 {
@@ -297,13 +257,14 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                let ret = self.conn.execute(
+                self.conn.execute(
                     "DELETE FROM blockhash WHERE block_height=?",
                     &[&block_height],
-                );
-                ret.map(|_| ()).map_err(|_| "delete failed".to_owned())
+                )
             }
-            _ => Err("id is not correct".to_owned()),
-        }
+            _ => return Err("id is not correct".to_owned()),
+        };
+        ret.map(|_| ())
+            .map_err(|e| format!("delete error: {:?}", e))
     }
 }
