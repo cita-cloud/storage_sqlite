@@ -150,7 +150,9 @@ impl DB {
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
                 self.conn
-                    .query_row("SELECT content FROM global WHERE id=?", &[&id], |row| row.get(0))
+                    .query_row("SELECT content FROM global WHERE id=?", &[&id], |row| {
+                        row.get(0)
+                    })
             }
             1 => {
                 if key.len() != 32 {

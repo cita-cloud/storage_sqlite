@@ -16,7 +16,7 @@ mod db;
 
 use clap::Clap;
 use git_version::git_version;
-use log::{debug, info};
+use log::{debug, info, warn};
 
 const GIT_VERSION: &str = git_version!(
     args = ["--tags", "--always", "--dirty=-modified"],
@@ -77,8 +77,9 @@ fn main() {
     }
 }
 
-
-use cita_ng_proto::config::{RegisterEndpointInfo, Endpoint, config_service_client::ConfigServiceClient};
+use cita_ng_proto::config::{
+    config_service_client::ConfigServiceClient, Endpoint, RegisterEndpointInfo,
+};
 
 async fn register_endpoint(
     config_port: String,
@@ -113,6 +114,8 @@ use db::DB;
 use std::marker::Send;
 use std::marker::Sync;
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 pub struct StorageServer {
     db: Arc<RwLock<DB>>,
@@ -194,8 +197,18 @@ async fn run(opts: RunOpts) -> Result<(), Box<dyn std::error::Error>> {
 
     let storage_server = StorageServer::new(db);
 
-    // register endpoint
-    register_endpoint(opts.config_port, opts.grpc_port).await?;
+    tokio::spawn(async move {
+        loop {
+            // register endpoint
+            let ret = register_endpoint(opts.config_port.clone(), opts.grpc_port.clone()).await;
+            if ret.is_ok() && ret.unwrap() {
+                info!("register endpoint success!");
+                break;
+            }
+            warn!("register endpoint failed! Retrying");
+            thread::sleep(Duration::new(3, 0));
+        }
+    });
 
     Server::builder()
         .add_service(StorageServiceServer::new(storage_server))
