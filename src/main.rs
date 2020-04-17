@@ -114,8 +114,8 @@ use db::DB;
 use std::marker::Send;
 use std::marker::Sync;
 use std::sync::Arc;
-use std::thread;
 use std::time::Duration;
+use tokio::time;
 
 pub struct StorageServer {
     db: Arc<RwLock<DB>>,
@@ -198,15 +198,17 @@ async fn run(opts: RunOpts) -> Result<(), Box<dyn std::error::Error>> {
     let storage_server = StorageServer::new(db);
 
     tokio::spawn(async move {
+        let mut interval = time::interval(Duration::from_secs(3));
         loop {
-            // register endpoint
-            let ret = register_endpoint(opts.config_port.clone(), opts.grpc_port.clone()).await;
-            if ret.is_ok() && ret.unwrap() {
-                info!("register endpoint success!");
-                break;
+            {
+                let ret = register_endpoint(opts.config_port.clone(), opts.grpc_port.clone()).await;
+                if ret.is_ok() && ret.unwrap() {
+                    info!("register endpoint success!");
+                    break;
+                }
+                warn!("register endpoint failed! Retrying");
             }
-            warn!("register endpoint failed! Retrying");
-            thread::sleep(Duration::new(3, 0));
+            interval.tick().await;
         }
     });
 
