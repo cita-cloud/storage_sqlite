@@ -107,28 +107,19 @@ use cita_ng_proto::storage::{
     storage_service_server::StorageService, storage_service_server::StorageServiceServer, Content,
     ExtKey, Value,
 };
-use parking_lot::RwLock;
 use tonic::{transport::Server, Request, Response, Status};
 
 use db::DB;
-use std::marker::Send;
-use std::marker::Sync;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time;
 
 pub struct StorageServer {
-    db: Arc<RwLock<DB>>,
+    db: DB,
 }
-
-unsafe impl Sync for StorageServer {}
-unsafe impl Send for StorageServer {}
 
 impl StorageServer {
     fn new(db: DB) -> Self {
-        StorageServer {
-            db: Arc::new(RwLock::new(db)),
-        }
+        StorageServer { db }
     }
 }
 
@@ -142,7 +133,7 @@ impl StorageService for StorageServer {
         let key = content.key;
         let value = content.value;
 
-        let ret = self.db.read().store(region, key, value);
+        let ret = self.db.store(region, key, value);
         if ret.is_err() {
             debug!("store error: {:?}", ret);
             Err(Status::internal("db store failed"))
@@ -159,7 +150,7 @@ impl StorageService for StorageServer {
         let region = ext_key.region;
         let key = ext_key.key;
 
-        let ret = self.db.read().load(region, key);
+        let ret = self.db.load(region, key);
         if let Ok(value) = ret {
             let reply = Value { value };
             Ok(Response::new(reply))
@@ -176,7 +167,7 @@ impl StorageService for StorageServer {
         let region = ext_key.region;
         let key = ext_key.key;
 
-        let ret = self.db.read().delete(region, key);
+        let ret = self.db.delete(region, key);
         if ret.is_err() {
             debug!("delete error: {:?}", ret);
             Err(Status::internal("db delete failed"))

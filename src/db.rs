@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::NO_PARAMS;
-use rusqlite::{Connection, Error, Result};
+use rusqlite::{Error, Result};
 use std::vec::Vec;
 
 pub struct DB {
-    conn: Connection,
+    pool: Pool<SqliteConnectionManager>,
 }
 
 impl DB {
     pub fn new(db_path: &str) -> Self {
-        let conn = Connection::open(db_path).unwrap();
+        let manager = SqliteConnectionManager::file(db_path);
+        let pool = Pool::new(manager).unwrap();
 
+        let conn = pool.get().unwrap();
         // table global store CurrentHash/CurrentHeight/CurrentProof
         let _ = conn.execute(
             "create table if not exists global (
@@ -70,10 +74,11 @@ impl DB {
             NO_PARAMS,
         );
 
-        DB { conn }
+        DB { pool }
     }
 
     pub fn store(&self, region: u32, key: Vec<u8>, value: Vec<u8>) -> Result<(), String> {
+        let conn = self.pool.get().unwrap();
         let ret = match region {
             0 => {
                 if key.len() != 8 {
@@ -82,7 +87,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
-                self.conn.execute(
+                conn.execute(
                     "INSERT INTO global (id, content) values (?1, ?2)",
                     &[&id as &dyn ToSql, &value as &dyn ToSql],
                 )
@@ -91,7 +96,7 @@ impl DB {
                 if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
-                self.conn.execute(
+                conn.execute(
                     "INSERT INTO transactions (tx_hash, tx) values (?1, ?2)",
                     &[&key as &dyn ToSql, &value as &dyn ToSql],
                 )
@@ -103,7 +108,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn.execute(
+                conn.execute(
                     "INSERT INTO headers (block_height, block_header) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
                 )
@@ -115,7 +120,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn.execute(
+                conn.execute(
                     "INSERT INTO bodies (block_height, block_body) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
                 )
@@ -130,7 +135,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn.execute(
+                conn.execute(
                     "INSERT INTO blockhash (block_height, block_hash) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
                 )
@@ -141,6 +146,7 @@ impl DB {
     }
 
     pub fn load(&self, region: u32, key: Vec<u8>) -> Result<Vec<u8>, String> {
+        let conn = self.pool.get().unwrap();
         let ret = match region {
             0 => {
                 if key.len() != 8 {
@@ -149,16 +155,15 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
-                self.conn
-                    .query_row("SELECT content FROM global WHERE id=?", &[&id], |row| {
-                        row.get(0)
-                    })
+                conn.query_row("SELECT content FROM global WHERE id=?", &[&id], |row| {
+                    row.get(0)
+                })
             }
             1 => {
                 if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
-                self.conn.query_row(
+                conn.query_row(
                     "SELECT tx FROM transactions WHERE tx_hash=?",
                     &[&key],
                     |row| row.get(0),
@@ -171,7 +176,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn.query_row(
+                conn.query_row(
                     "SELECT block_header FROM headers WHERE block_height=?",
                     &[&block_height],
                     |row| row.get(0),
@@ -184,7 +189,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn.query_row(
+                conn.query_row(
                     "SELECT block_body FROM bodies WHERE block_height=?",
                     &[&block_height],
                     |row| row.get(0),
@@ -197,7 +202,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn.query_row(
+                conn.query_row(
                     "SELECT block_hash FROM blockhash WHERE block_height=?",
                     &[&block_height],
                     |row| row.get(0),
@@ -215,6 +220,7 @@ impl DB {
     }
 
     pub fn delete(&self, region: u32, key: Vec<u8>) -> Result<(), String> {
+        let conn = self.pool.get().unwrap();
         let ret = match region {
             0 => {
                 if key.len() != 8 {
@@ -223,14 +229,13 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
-                self.conn.execute("DELETE FROM global WHERE id=?", &[&id])
+                conn.execute("DELETE FROM global WHERE id=?", &[&id])
             }
             1 => {
                 if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
-                self.conn
-                    .execute("DELETE FROM transactions WHERE tx_hash=?", &[&key])
+                conn.execute("DELETE FROM transactions WHERE tx_hash=?", &[&key])
             }
             2 => {
                 if key.len() != 8 {
@@ -239,8 +244,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn
-                    .execute("DELETE FROM headers WHERE block_height=?", &[&block_height])
+                conn.execute("DELETE FROM headers WHERE block_height=?", &[&block_height])
             }
             3 => {
                 if key.len() != 8 {
@@ -249,8 +253,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn
-                    .execute("DELETE FROM bodies WHERE block_height=?", &[&block_height])
+                conn.execute("DELETE FROM bodies WHERE block_height=?", &[&block_height])
             }
             4 => {
                 if key.len() != 8 {
@@ -259,7 +262,7 @@ impl DB {
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
-                self.conn.execute(
+                conn.execute(
                     "DELETE FROM blockhash WHERE block_height=?",
                     &[&block_height],
                 )
