@@ -88,16 +88,17 @@ impl DB {
                 bytes[..8].clone_from_slice(&key[..8]);
                 let id = i64::from_be_bytes(bytes);
                 conn.execute(
-                    "INSERT INTO global (id, content) values (?1, ?2)",
+                    "INSERT OR REPLACE INTO global (id, content) values (?1, ?2)",
                     &[&id as &dyn ToSql, &value as &dyn ToSql],
                 )
             }
             1 => {
-                if key.len() != 32 {
+                // when mutlti crypt len of hash should be 33
+                if key.len() != 32 && key.len() != 33 {
                     return Err("len of key is not correct".to_owned());
                 }
                 conn.execute(
-                    "INSERT INTO transactions (tx_hash, tx) values (?1, ?2)",
+                    "INSERT OR REPLACE INTO transactions (tx_hash, tx) values (?1, ?2)",
                     &[&key as &dyn ToSql, &value as &dyn ToSql],
                 )
             }
@@ -109,7 +110,7 @@ impl DB {
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
                 conn.execute(
-                    "INSERT INTO headers (block_height, block_header) values (?1, ?2)",
+                    "INSERT OR REPLACE INTO headers (block_height, block_header) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
                 )
             }
@@ -121,7 +122,7 @@ impl DB {
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
                 conn.execute(
-                    "INSERT INTO bodies (block_height, block_body) values (?1, ?2)",
+                    "INSERT OR REPLACE INTO bodies (block_height, block_body) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
                 )
             }
@@ -129,14 +130,15 @@ impl DB {
                 if key.len() != 8 {
                     return Err("len of key is not correct".to_owned());
                 }
-                if value.len() != 32 {
+                // when mutlti crypt len of hash should be 33
+                if value.len() != 32 && value.len() != 33 {
                     return Err("len of value is not correct".to_owned());
                 }
                 let mut bytes: [u8; 8] = [0; 8];
                 bytes[..8].clone_from_slice(&key[..8]);
                 let block_height = i64::from_be_bytes(bytes);
                 conn.execute(
-                    "INSERT INTO blockhash (block_height, block_hash) values (?1, ?2)",
+                    "INSERT OR REPLACE INTO blockhash (block_height, block_hash) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
                 )
             }
@@ -160,7 +162,8 @@ impl DB {
                 })
             }
             1 => {
-                if key.len() != 32 {
+                // when mutlti crypt len of hash should be 33
+                if key.len() != 32 && key.len() != 33 {
                     return Err("len of key is not correct".to_owned());
                 }
                 conn.query_row(
@@ -232,7 +235,8 @@ impl DB {
                 conn.execute("DELETE FROM global WHERE id=?", &[&id])
             }
             1 => {
-                if key.len() != 32 {
+                // when mutlti crypt len of hash should be 33
+                if key.len() != 32 && key.len() != 33 {
                     return Err("len of key is not correct".to_owned());
                 }
                 conn.execute("DELETE FROM transactions WHERE tx_hash=?", &[&key])
