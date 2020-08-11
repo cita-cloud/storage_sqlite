@@ -22,7 +22,7 @@ const GIT_VERSION: &str = git_version!(
     args = ["--tags", "--always", "--dirty=-modified"],
     fallback = "unknown"
 );
-const GIT_HOMEPAGE: &str = "https://github.com/rink1969/cita_ng_storage";
+const GIT_HOMEPAGE: &str = "https://github.com/cita-cloud/storage_sqlite";
 
 /// network service
 #[derive(Clap)]
@@ -46,10 +46,10 @@ enum SubCommand {
 #[derive(Clap)]
 struct RunOpts {
     /// Sets grpc port of this service.
-    #[clap(short = "p", long = "port", default_value = "50003")]
+    #[clap(short = 'p', long = "port", default_value = "50003")]
     grpc_port: String,
     /// Sets db path.
-    #[clap(short = "d", long = "db", default_value = "storage.db")]
+    #[clap(short = 'd', long = "db", default_value = "storage.db")]
     db_path: String,
 }
 
@@ -73,8 +73,8 @@ fn main() {
     }
 }
 
-use cita_ng_proto::common::SimpleResponse;
-use cita_ng_proto::storage::{
+use cita_cloud_proto::common::SimpleResponse;
+use cita_cloud_proto::storage::{
     storage_service_server::StorageService, storage_service_server::StorageServiceServer, Content,
     ExtKey, Value,
 };
