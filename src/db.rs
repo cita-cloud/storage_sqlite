@@ -384,20 +384,20 @@ mod tests {
     }
 
     impl Arbitrary for DBTestArgs {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let region = g.next_u32() % 7;
+        fn arbitrary(g: &mut Gen) -> Self {
+            let region = u32::arbitrary(g) % 7;
             let key = match region {
                 1 => {
                     let mut k = Vec::with_capacity(32);
                     for _ in 0..4 {
-                        let bytes = g.next_u64().to_be_bytes().to_vec();
+                        let bytes = u64::arbitrary(g).to_be_bytes().to_vec();
                         k.extend_from_slice(&bytes);
                     }
                     k
                 }
                 _ => {
                     let mut k = Vec::with_capacity(8);
-                    let bytes = g.next_u64().to_be_bytes().to_vec();
+                    let bytes = u64::arbitrary(g).to_be_bytes().to_vec();
                     k.extend_from_slice(&bytes);
                     k
                 }
@@ -405,7 +405,7 @@ mod tests {
 
             let mut value = Vec::with_capacity(32);
             for _ in 0..4 {
-                let bytes = g.next_u64().to_be_bytes().to_vec();
+                let bytes = u64::arbitrary(g).to_be_bytes().to_vec();
                 value.extend_from_slice(&bytes);
             }
 
@@ -421,10 +421,10 @@ mod tests {
 
              let region = args.region;
              let key = args.key.clone();
-             let value = args.value.clone();
+             let value = args.value;
 
              db.store(region, key.clone(), value.clone()).unwrap();
-             db.load(region, key.clone()).unwrap() == value
+             db.load(region, key).unwrap() == value
          }
     }
 }
