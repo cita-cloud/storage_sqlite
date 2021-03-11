@@ -73,6 +73,21 @@ fn main() {
     }
 }
 
+use std::path::Path;
+use tokio::fs;
+
+async fn get_tx(tx_hash: &[u8]) -> Option<Vec<u8>> {
+    if tx_hash.len() != 32 {
+        warn!("len of tx_hash is not correct");
+        return None;
+    }
+    let filename = hex::encode(tx_hash);
+    let root_path = Path::new(".");
+    let tx_path = root_path.join("txs").join(filename);
+
+    fs::read(tx_path).await.ok()
+}
+
 use cita_cloud_proto::common::SimpleResponse;
 use cita_cloud_proto::storage::{
     storage_service_server::StorageService, storage_service_server::StorageServiceServer, Content,
@@ -119,7 +134,11 @@ impl StorageService for StorageServer {
         let region = ext_key.region;
         let key = ext_key.key;
 
-        let ret = self.db.load(region, key);
+        let ret = if region == 1 {
+            get_tx(&key).await.ok_or("get tx failed".to_owned())
+        } else {
+            self.db.load(region, key)
+        };
         if let Ok(value) = ret {
             let reply = Value { value };
             Ok(Response::new(reply))

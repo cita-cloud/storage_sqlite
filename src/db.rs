@@ -111,8 +111,7 @@ impl DB {
                 )
             }
             1 => {
-                // when mutlti crypt len of hash should be 33
-                if key.len() != 32 && key.len() != 33 {
+                if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
                 conn.execute(
@@ -208,8 +207,7 @@ impl DB {
                 })
             }
             1 => {
-                // when mutlti crypt len of hash should be 33
-                if key.len() != 32 && key.len() != 33 {
+                if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
                 conn.query_row(
@@ -307,8 +305,7 @@ impl DB {
                 conn.execute("DELETE FROM global WHERE id=?", &[&id])
             }
             1 => {
-                // when mutlti crypt len of hash should be 33
-                if key.len() != 32 && key.len() != 33 {
+                if key.len() != 32 {
                     return Err("len of key is not correct".to_owned());
                 }
                 conn.execute("DELETE FROM transactions WHERE tx_hash=?", &[&key])
