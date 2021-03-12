@@ -17,6 +17,7 @@ cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
 r2d2 = "*"
 r2d2_sqlite = "*"
 rusqlite = "*"
+hex = "*"
 
 [dev-dependencies]
 tempfile = "*"
