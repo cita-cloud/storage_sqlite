@@ -23,3 +23,11 @@ hex = "*"
 tempfile = "*"
 quickcheck = "*"
 
+[profile.release.package."*"]
+# Set the default for dependencies.
+debug = 0
+
+[profile.release]
+# Add debug info -- line tables only
+debug = 1
+
