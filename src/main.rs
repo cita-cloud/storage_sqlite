@@ -135,7 +135,7 @@ impl StorageService for StorageServer {
         let key = ext_key.key;
 
         let ret = if region == 1 {
-            get_tx(&key).await.ok_or("get tx failed".to_owned())
+            get_tx(&key).await.ok_or_else(|| "get tx failed".to_owned())
         } else {
             self.db.load(region, key)
         };

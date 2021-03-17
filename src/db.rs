@@ -92,6 +92,27 @@ impl DB {
             NO_PARAMS,
         );
 
+        // table 7 tx_hash_2_block_height store tx_hash:block_height
+        let _ = conn.execute(
+            "create table if not exists tx_hash_2_block_height (
+             tx_hash binary(32) primary key,
+             block_height integer
+         )",
+            NO_PARAMS,
+        );
+
+        // table 8 results store block_hash:block_height
+        // this is a sql db, so we can reuse table 4
+
+        // table 9 transaction_index store tx_hash:tx_index
+        let _ = conn.execute(
+            "create table if not exists transaction_index (
+             tx_hash binary(32) primary key,
+             tx_index integer
+         )",
+            NO_PARAMS,
+        );
+
         DB { pool }
     }
 
@@ -147,8 +168,8 @@ impl DB {
                 if key.len() != 8 {
                     return Err("len of key is not correct".to_owned());
                 }
-                // when mutlti crypt len of hash should be 33
-                if value.len() != 32 && value.len() != 33 {
+
+                if value.len() != 32 {
                     return Err("len of value is not correct".to_owned());
                 }
                 let mut bytes: [u8; 8] = [0; 8];
@@ -175,8 +196,8 @@ impl DB {
                 if key.len() != 8 {
                     return Err("len of key is not correct".to_owned());
                 }
-                // when mutlti crypt len of hash should be 33
-                if value.len() != 32 && value.len() != 33 {
+
+                if value.len() != 32 {
                     return Err("len of value is not correct".to_owned());
                 }
                 let mut bytes: [u8; 8] = [0; 8];
@@ -185,6 +206,51 @@ impl DB {
                 conn.execute(
                     "INSERT OR REPLACE INTO results (block_height, executed_block_hash) values (?1, ?2)",
                     &[&block_height as &dyn ToSql, &value as &dyn ToSql],
+                )
+            }
+            7 => {
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                if value.len() != 8 {
+                    return Err("len of value is not correct".to_owned());
+                }
+                let mut bytes: [u8; 8] = [0; 8];
+                bytes[..8].clone_from_slice(&value[..8]);
+                let block_height = i64::from_be_bytes(bytes);
+                conn.execute(
+                    "INSERT OR REPLACE INTO tx_hash_2_block_height (tx_hash, block_height) values (?1, ?2)",
+                    &[&key as &dyn ToSql, &block_height as &dyn ToSql],
+                )
+            }
+            8 => {
+                if value.len() != 8 {
+                    return Err("len of value is not correct".to_owned());
+                }
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                let mut bytes: [u8; 8] = [0; 8];
+                bytes[..8].clone_from_slice(&value[..8]);
+                let block_height = i64::from_be_bytes(bytes);
+                conn.execute(
+                    "INSERT OR REPLACE INTO blockhash (block_height, block_hash) values (?1, ?2)",
+                    &[&block_height as &dyn ToSql, &key as &dyn ToSql],
+                )
+            }
+            9 => {
+                if value.len() != 8 {
+                    return Err("len of value is not correct".to_owned());
+                }
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                let mut bytes: [u8; 8] = [0; 8];
+                bytes[..8].clone_from_slice(&value[..8]);
+                let tx_index = i64::from_be_bytes(bytes);
+                conn.execute(
+                    "INSERT OR REPLACE INTO transaction_index (tx_hash, tx_index) values (?1, ?2)",
+                    &[&key as &dyn ToSql, &tx_index as &dyn ToSql],
                 )
             }
             _ => return Err("id is not correct".to_owned()),
@@ -281,6 +347,37 @@ impl DB {
                     |row| row.get(0),
                 )
             }
+            7 => {
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+
+                conn.query_row(
+                    "SELECT block_height FROM tx_hash_2_block_height WHERE tx_hash=?",
+                    &[&key],
+                    |row| row.get(0).map(|v: i64| v.to_be_bytes().to_vec()),
+                )
+            }
+            8 => {
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                conn.query_row(
+                    "SELECT block_height FROM blockhash WHERE block_hash=?",
+                    &[&key],
+                    |row| row.get(0).map(|v: i64| v.to_be_bytes().to_vec()),
+                )
+            }
+            9 => {
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                conn.query_row(
+                    "SELECT tx_index FROM transaction_index WHERE tx_hash=?",
+                    &[&key],
+                    |row| row.get(0).map(|v: i64| v.to_be_bytes().to_vec()),
+                )
+            }
             _ => return Err("id is not correct".to_owned()),
         };
         if ret == Err(Error::QueryReturnedNoRows) {
@@ -358,6 +455,27 @@ impl DB {
                 let block_height = i64::from_be_bytes(bytes);
                 conn.execute("DELETE FROM results WHERE block_height=?", &[&block_height])
             }
+            7 => {
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                conn.execute(
+                    "DELETE FROM tx_hash_2_block_height WHERE tx_hash=?",
+                    &[&key],
+                )
+            }
+            8 => {
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                conn.execute("DELETE FROM blockhash WHERE block_hash=?", &[&key])
+            }
+            9 => {
+                if key.len() != 32 {
+                    return Err("len of key is not correct".to_owned());
+                }
+                conn.execute("DELETE FROM transaction_index WHERE tx_hash=?", &[&key])
+            }
             _ => return Err("id is not correct".to_owned()),
         };
         ret.map(|_| ())
@@ -382,9 +500,9 @@ mod tests {
 
     impl Arbitrary for DBTestArgs {
         fn arbitrary(g: &mut Gen) -> Self {
-            let region = u32::arbitrary(g) % 7;
+            let region = u32::arbitrary(g) % 10;
             let key = match region {
-                1 => {
+                1 | 7 | 8 | 9 => {
                     let mut k = Vec::with_capacity(32);
                     for _ in 0..4 {
                         let bytes = u64::arbitrary(g).to_be_bytes().to_vec();
@@ -400,11 +518,22 @@ mod tests {
                 }
             };
 
-            let mut value = Vec::with_capacity(32);
-            for _ in 0..4 {
-                let bytes = u64::arbitrary(g).to_be_bytes().to_vec();
-                value.extend_from_slice(&bytes);
-            }
+            let value = match region {
+                7 | 8 | 9 => {
+                    let mut v = Vec::with_capacity(8);
+                    let bytes = u64::arbitrary(g).to_be_bytes().to_vec();
+                    v.extend_from_slice(&bytes);
+                    v
+                }
+                _ => {
+                    let mut v = Vec::with_capacity(32);
+                    for _ in 0..4 {
+                        let bytes = u64::arbitrary(g).to_be_bytes().to_vec();
+                        v.extend_from_slice(&bytes);
+                    }
+                    v
+                }
+            };
 
             DBTestArgs { region, key, value }
         }
