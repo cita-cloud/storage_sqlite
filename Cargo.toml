@@ -19,6 +19,10 @@ r2d2_sqlite = "*"
 rusqlite = "*"
 hex = "*"
 
+[[bin]]
+name = "bench"
+path = "benches/main.rs"
+
 [dev-dependencies]
 tempfile = "*"
 quickcheck = "*"
