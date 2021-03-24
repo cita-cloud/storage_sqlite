@@ -25,7 +25,8 @@ pub struct DB {
 
 impl DB {
     pub fn new(db_path: &str) -> Self {
-        let manager = SqliteConnectionManager::file(db_path);
+        let manager = SqliteConnectionManager::file(db_path)
+            .with_init(|c| c.execute_batch("PRAGMA synchronous=OFF;"));
         let pool = Pool::new(manager).unwrap();
 
         let conn = pool.get().unwrap();
