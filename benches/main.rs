@@ -73,12 +73,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         for _ in 0..4 {
             hash.extend_from_slice(&i.to_be_bytes().to_vec());
         }
-        let _ = store_data(
-            50003,
-            9,
-            hash.to_vec(),
-            i.to_be_bytes().to_vec(),
-        ).await?;
+        let _ = store_data(50003, 9, hash.to_vec(), i.to_be_bytes().to_vec()).await?;
     }
     Ok(())
 }
