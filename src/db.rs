@@ -15,7 +15,6 @@
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
-use rusqlite::NO_PARAMS;
 use rusqlite::{Error, Result};
 use std::vec::Vec;
 
@@ -36,7 +35,7 @@ impl DB {
              id integer primary key,
              content BLOB
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 1 transactions store tx_hash:tx
@@ -45,7 +44,7 @@ impl DB {
              tx_hash binary(32) primary key,
              tx BLOB
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 2 headers store block_height:block_header
@@ -54,7 +53,7 @@ impl DB {
              block_height integer primary key,
              block_header BLOB
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 3 bodies store block_height:block_body(group of tx_hash)
@@ -63,7 +62,7 @@ impl DB {
              block_height integer primary key,
              block_body BLOB
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 4 blockhash store block_height:block_hash
@@ -72,7 +71,7 @@ impl DB {
              block_height integer primary key,
              block_hash binary(32)
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 5 proofs store block_height:proof
@@ -81,7 +80,7 @@ impl DB {
              block_height integer primary key,
              proof BLOB
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 6 results store block_height:executed_block_hash
@@ -90,7 +89,7 @@ impl DB {
              block_height integer primary key,
              executed_block_hash binary(32)
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 7 tx_hash_2_block_height store tx_hash:block_height
@@ -99,7 +98,7 @@ impl DB {
              tx_hash binary(32) primary key,
              block_height integer
          )",
-            NO_PARAMS,
+            [],
         );
 
         // table 8 results store block_hash:block_height
@@ -111,7 +110,7 @@ impl DB {
              tx_hash binary(32) primary key,
              tx_index integer
          )",
-            NO_PARAMS,
+            [],
         );
 
         DB { pool }
