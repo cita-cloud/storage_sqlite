@@ -118,12 +118,19 @@ impl StorageService for StorageServer {
         let value = content.value;
 
         let ret = self.db.store(region, key, value);
-        if ret.is_err() {
-            warn!("store error: {:?}", ret);
-            Err(Status::internal("db store failed"))
-        } else {
-            let reply = SimpleResponse { is_success: true };
-            Ok(Response::new(reply))
+        match ret {
+            Ok(_) => {
+                let reply = SimpleResponse { is_success: true };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                warn!("store error: {:?}", e);
+                if e.starts_with("len") || e.starts_with("id") {
+                    Err(Status::invalid_argument("invalid_argument"))
+                } else {
+                    Err(Status::aborted("db store failed"))
+                }
+            }
         }
     }
 
@@ -139,12 +146,20 @@ impl StorageService for StorageServer {
         } else {
             self.db.load(region, key)
         };
-        if let Ok(value) = ret {
-            let reply = Value { value };
-            Ok(Response::new(reply))
-        } else {
-            warn!("load error: {:?}", ret);
-            Err(Status::internal("db load failed"))
+
+        match ret {
+            Ok(value) => {
+                let reply = Value { value };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                warn!("load error: {:?}", e);
+                if e.starts_with("len") || e.starts_with("id") {
+                    Err(Status::invalid_argument("invalid_argument"))
+                } else {
+                    Err(Status::aborted("db load failed"))
+                }
+            }
         }
     }
 
@@ -156,12 +171,20 @@ impl StorageService for StorageServer {
         let key = ext_key.key;
 
         let ret = self.db.delete(region, key);
-        if ret.is_err() {
-            warn!("delete error: {:?}", ret);
-            Err(Status::internal("db delete failed"))
-        } else {
-            let reply = SimpleResponse { is_success: true };
-            Ok(Response::new(reply))
+
+        match ret {
+            Ok(_) => {
+                let reply = SimpleResponse { is_success: true };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                warn!("delete error: {:?}", e);
+                if e.starts_with("len") || e.starts_with("id") {
+                    Err(Status::invalid_argument("invalid_argument"))
+                } else {
+                    Err(Status::aborted("db delete failed"))
+                }
+            }
         }
     }
 }
