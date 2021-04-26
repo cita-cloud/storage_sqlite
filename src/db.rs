@@ -381,7 +381,7 @@ impl DB {
             _ => return Err("id is not correct".to_owned()),
         };
         if ret == Err(Error::QueryReturnedNoRows) {
-            Ok(vec![])
+            Err("not found".to_owned())
         } else if ret.is_err() {
             Err(format!("load error: {:?}", ret))
         } else {
