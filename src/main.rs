@@ -156,6 +156,8 @@ impl StorageService for StorageServer {
                 warn!("load error: {:?}", e);
                 if e.starts_with("len") || e.starts_with("id") {
                     Err(Status::invalid_argument("invalid_argument"))
+                } else if e == "not found" {
+                    Err(Status::not_found("key not found"))
                 } else {
                     Err(Status::aborted("db load failed"))
                 }
